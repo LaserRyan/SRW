@@ -1,0 +1,12 @@
+# Python
+server/.venv/
+
+# Node
+client/node_modules/
+
+# Build
+client/dist/
+
+# Misc
+.DS_Store
+.env

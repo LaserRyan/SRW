@@ -1,0 +1,148 @@
+.app {
+  min-height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #0b5d3b;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.new-game-button {
+  background: white;
+  color: #0b5d3b;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.new-game-button:hover {
+  opacity: 0.9;
+}
+
+.title {
+  margin: 0;
+}
+
+.error {
+  color: #ffb3b3;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.top-group {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.foundations {
+  justify-content: flex-end;
+}
+
+.pile-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pile-label {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.pile-slot {
+  width: 80px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pile-count {
+  font-size: 13px;
+}
+
+.empty-slot {
+  width: 80px;
+  height: 112px;
+  border: 2px dashed rgba(255, 255, 255, 0.45);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.card {
+  width: 80px;
+  height: 112px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.face-up {
+  background: white;
+  color: black;
+  border: 2px solid #222;
+}
+
+.face-down {
+  background: #1e3a8a;
+  border: 2px solid #0f1f4d;
+}
+
+.tableau-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.tableau-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tableau-stack {
+  position: relative;
+  min-height: 140px;
+}
+
+.tableau-card-wrapper {
+  margin-top: -72px;
+}
+
+.tableau-card-wrapper:first-child {
+  margin-top: 0;
+}

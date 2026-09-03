@@ -12,7 +12,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
     "http://localhost:5173",
-    "https://srw-frontend.onrender.com/",
+    "https://srw-frontend.onrender.com",
 ],
     allow_credentials=True,
     allow_methods=["*"],

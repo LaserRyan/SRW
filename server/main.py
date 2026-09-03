@@ -609,6 +609,17 @@ def quit_player(match_id: str, player_id: str):
         player = get_player(match_id, player_id)
         match = matches[match_id]
 
+        if match.status == "lobby":
+            match.ready_player_ids.discard(player_id)
+            del match.players[player_id]
+
+            return {
+                "matchId": match.match_id,
+                "status": match.status,
+                "playerId": player_id,
+                "quit": True,
+            }
+
         player.quit = True
 
         all_done = all(

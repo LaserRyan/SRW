@@ -11,7 +11,16 @@ type SelectedFoundationMove = {
   foundationKey: string;
 };
 
-type Screen = "start" | "lobby" | "game" | "results";
+type Screen =
+  | "welcome"
+  | "login"
+  | "signup"
+  | "modeSelect"
+  | "singleplayer"
+  | "multiplayer"
+  | "lobby"
+  | "game"
+  | "results";
 
 type MatchStats = {
   matchStartMs: number | null;
@@ -42,6 +51,10 @@ const TABLEAU_KEY_TO_INDEX: Record<string, number> = {
   "5": 4,
   "6": 5,
   "7": 6,
+
+  // Aliases for easier left-hand hotkeys.
+  d: 5,
+  f: 6,
 };
 
 const FOUNDATION_KEY_TO_KEY: Record<string, string> = {
@@ -78,7 +91,8 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
 };
 
 function App() {
-  const [screen, setScreen] = useState<Screen>("start");
+  const [screen, setScreen] = useState<Screen>("welcome");
+  const [displayName, setDisplayName] = useState("Guest");
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +145,18 @@ function App() {
     setMatchId(null);
     setPlayerId(null);
   };
+
+  const createTemporaryPlayerId = () => {
+  const safeDisplayName = displayName
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9-_]/g, "");
+
+  const fallbackName = safeDisplayName || "Guest";
+  const shortId = Math.floor(1000 + Math.random() * 9000);
+
+  return `${fallbackName}-${shortId}`;
+};
 
   const getHoveredTableauCard = () => {
     if (
@@ -303,6 +329,22 @@ const loadMatchSummary = async () => {
     // Ignore for now.
   }
 };
+
+useEffect(() => {
+  if (screen !== "results" || !matchId) {
+    return;
+  }
+
+  void loadMatchSummary();
+
+  const intervalId = window.setInterval(() => {
+    void loadMatchSummary();
+  }, 1500);
+
+  return () => {
+    window.clearInterval(intervalId);
+  };
+}, [screen, matchId]);
 
   const getFoundationCardCount = (state: GameState) => {
     return (
@@ -551,7 +593,7 @@ const loadMatchSummary = async () => {
 
         if (matchData.error) {
           clearMatchIdentity();
-          setScreen("start");
+          setScreen("multiplayer");
           return;
         }
 
@@ -704,7 +746,7 @@ const handleNewGame = async () => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        playerId: "player-1",
+        playerId: createTemporaryPlayerId(),
       }),
     });
 
@@ -764,7 +806,7 @@ const handleJoinMatch = async () => {
     return;
   }
 
-  const newPlayerId = `player-${Date.now()}`;
+  const newPlayerId = createTemporaryPlayerId();
 
   try {
     setIsProcessingMove(true);
@@ -892,7 +934,7 @@ const handleLeaveGame = async () => {
     }
   }
 
-  setScreen("start");
+  setScreen("multiplayer");
   setGameState(null);
   setError(null);
   setLoading(false);
@@ -1240,12 +1282,166 @@ const handleLeaveGame = async () => {
 
   
 
-// 👇 ADD THIS BLOCK RIGHT HERE
-if (screen === "start") {
+if (screen === "welcome") {
   return (
     <div className="app start-screen">
       <div className="start-screen-content">
         <h1 className="title">Solitaire Race</h1>
+
+        <p className="start-screen-subtitle">
+          Log in later to track stats, match history, profiles, and ratings.
+        </p>
+
+        <button
+          className="new-game-button"
+          onClick={() => setScreen("login")}
+        >
+          Log In
+        </button>
+
+        <button
+          className="new-game-button"
+          onClick={() => setScreen("signup")}
+        >
+          Sign Up
+        </button>
+
+       <button
+          className="new-game-button"
+          onClick={() => {
+            setDisplayName("Guest");
+            setScreen("modeSelect");
+          }}
+        >
+          Continue as Guest
+        </button>
+      </div>
+    </div>
+  );
+}
+if (screen === "login") {
+  return (
+    <div className="app start-screen">
+      <div className="start-screen-content">
+        <h1 className="title">Log In</h1>
+
+        <p className="start-screen-subtitle">
+          Account login will be added later. For now, continue as a guest.
+        </p>
+
+        <button
+          className="new-game-button"
+          onClick={() => setScreen("modeSelect")}
+        >
+          Continue as Guest
+        </button>
+
+        <button
+          className="leave-game-button"
+          onClick={() => setScreen("welcome")}
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+if (screen === "signup") {
+  return (
+    <div className="app start-screen">
+      <div className="start-screen-content">
+        <h1 className="title">Sign Up</h1>
+
+        <p className="start-screen-subtitle">
+          Account creation will be added later. For now, continue as a guest.
+        </p>
+
+        <button
+          className="new-game-button"
+          onClick={() => setScreen("modeSelect")}
+        >
+          Continue as Guest
+        </button>
+
+        <button
+          className="leave-game-button"
+          onClick={() => setScreen("welcome")}
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+if (screen === "modeSelect") {
+  return (
+    <div className="app start-screen">
+      <div className="start-screen-content">
+        <h1 className="title">Choose Mode</h1>
+
+        <p className="start-screen-subtitle">
+          Playing as {displayName}. Pick how you want to play.
+        </p>
+
+        <button
+          className="new-game-button"
+          onClick={() => setScreen("singleplayer")}
+        >
+          Singleplayer
+        </button>
+
+        <button
+          className="new-game-button"
+          onClick={() => setScreen("multiplayer")}
+        >
+          Multiplayer
+        </button>
+
+        <button
+          className="leave-game-button"
+          onClick={() => setScreen("welcome")}
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+if (screen === "singleplayer") {
+  return (
+    <div className="app start-screen">
+      <div className="start-screen-content">
+        <h1 className="title">Singleplayer</h1>
+
+        <p className="start-screen-subtitle">
+          Practice Klondike Race rules on your own. Coming soon.
+        </p>
+
+        <button
+          className="new-game-button"
+          disabled
+        >
+          Start Game
+        </button>
+
+        <button
+          className="leave-game-button"
+          onClick={() => setScreen("modeSelect")}
+        >
+          Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+if (screen === "multiplayer") {
+  return (
+    <div className="app start-screen">
+      <div className="start-screen-content">
+        <h1 className="title">Multiplayer</h1>
         <p className="start-screen-subtitle">
           Multiplayer Klondike race. Same seed, fastest solve wins.
         </p>
@@ -1257,7 +1453,7 @@ if (screen === "start") {
           onClick={handleNewGame}
           disabled={isProcessingMove || loading}
         >
-          {loading ? "Starting..." : "Start Game"}
+          {loading ? "Starting..." : "Create Room"}
         </button>
         <input
           value={joinMatchId}
@@ -1272,6 +1468,14 @@ if (screen === "start") {
           disabled={isProcessingMove || loading}
         >
           Join Match
+        </button>
+
+        <button
+          className="leave-game-button"
+          onClick={() => setScreen("modeSelect")}
+          disabled={isProcessingMove || loading}
+        >
+          Back
         </button>
       </div>
     </div>
@@ -1292,6 +1496,16 @@ if (screen === "lobby") {
           <div className="results-stat-row">
             <span>Room Code</span>
             <strong>{matchId}</strong>
+          </div>
+
+          <div className="results-stat-row">
+            <span>Name</span>
+            <strong>{displayName}</strong>
+          </div>
+
+          <div className="results-stat-row">
+            <span>Player ID</span>
+            <strong>{playerId}</strong>
           </div>
 
           <div className="results-stat-row">
@@ -1340,53 +1554,128 @@ if (screen === "lobby") {
 }
 
 if (screen === "results") {
+  const isMatchComplete = matchSummary?.status === "finished";
+
   return (
     <div className="app start-screen">
       <div className="start-screen-content results-screen-content">
-        <h1 className="title">You Win</h1>
-        <p className="start-screen-subtitle">
-          All 52 cards are in the foundations.
-        </p>
+        <h1 className="title">
+          {isMatchComplete ? "🏆 Match Complete" : "🏁 You Finished!"}
+        </h1>
 
-        <div className="results-stats">
-          <div className="results-stat-row">
-            <span>Total Time</span>
-            <strong>{formatTime(finalTimeMs)}</strong>
-          </div>
+        {!isMatchComplete && (
+          <p className="start-screen-subtitle">
+            Waiting for remaining players...
+          </p>
+        )}
 
-          <div className="results-stat-row">
-            <span>Overall Time</span>
-            <strong>{formatTime(matchStats.overallElapsedMs)}</strong>
-          </div>
+     <div className="results-stats">
+      <div className="results-stat-row">
+        <span>Raw Time</span>
+        <strong>{formatTime(matchStats.overallElapsedMs)}</strong>
+      </div>
 
-          <div className="results-stat-row">
-            <span>Penalty Time</span>
-            <strong>{formatTime(matchStats.accumulatedPenaltyMs)}</strong>
-          </div>
+      <div className="results-stat-row">
+        <span>Completed Deal Time</span>
+        <strong>{formatTime(matchStats.dealElapsedMs)}</strong>
+      </div>
 
-          <div className="results-stat-row">
-            <span>Winning Deal Time</span>
-            <strong>{formatTime(matchStats.dealElapsedMs)}</strong>
-          </div>
+      <div className="results-stat-row">
+        <span>Penalty Time</span>
+        <strong>{formatTime(matchStats.accumulatedPenaltyMs)}</strong>
+      </div>
 
-          <div className="results-stat-row">
-            <span>Resets</span>
-            <strong>{matchStats.resetCount}</strong>
-          </div>
+      <div className="results-stat-row">
+        <span>Final Time</span>
+        <strong>{formatTime(finalTimeMs)}</strong>
+      </div>
 
-          <div className="results-stat-row">
-            <span>Total Moves</span>
-            <strong>{matchStats.totalMoveCount}</strong>
-          </div>
+      <div className="results-stat-row">
+        <span>Resets</span>
+        <strong>{matchStats.resetCount}</strong>
+      </div>
+
+      <div className="results-stat-row">
+        <span>Deals Played</span>
+        <strong>{matchStats.resetCount + 1}</strong>
+      </div>
+
+      <div className="results-stat-row">
+        <span>Total Moves</span>
+        <strong>{matchStats.totalMoveCount}</strong>
+      </div>
+
+      <div className="results-stat-row">
+        <span>Completed Deal Moves</span>
+        <strong>{matchStats.dealMoveCount}</strong>
+      </div>
+    </div>
+
+      <h2>Standings</h2>
+
+        <div className="standings-list">
+          {matchSummary?.players?.length > 0 ? (
+            matchSummary.players.map((player: any) => {
+              const statusLabel =
+                player.outcome === "winner"
+                  ? "Winner"
+                  : player.outcome === "finished"
+                  ? "Finished"
+                  : player.outcome === "quit"
+                  ? "Quit"
+                  : player.outOfContention
+                  ? "Out of contention"
+                  : "Playing";
+
+              const finalTimeLabel =
+                player.finalTime !== null && player.finalTime !== undefined
+                  ? formatTime(player.finalTime * 1000)
+                  : null;
+
+              const isYou = player.playerId === playerId;
+
+              return (
+                <div className="standing-card" key={player.playerId}>
+                  <div className="standing-rank">#{player.rank}</div>
+
+                  <div className="standing-main">
+                    <div className="standing-player-name">
+                      {player.playerId}
+                      {isYou ? " (You)" : ""}
+                    </div>
+
+                    <div className="standing-status">{statusLabel}</div>
+                  </div>
+
+                  <div className="standing-time">
+                    {finalTimeLabel ?? "—"}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="standing-card">
+              <div className="standing-rank">—</div>
+
+              <div className="standing-main">
+                <div className="standing-player-name">Loading standings...</div>
+                <div className="standing-status">Please wait</div>
+              </div>
+
+              <div className="standing-time">—</div>
+            </div>
+          )}
         </div>
 
-        <button
-          className="new-game-button"
-          onClick={handleLeaveGame}
-          disabled={isProcessingMove}
-        >
-          Return to Start
-        </button>
+        {isMatchComplete && (
+          <button
+            className="new-game-button"
+            onClick={handleLeaveGame}
+            disabled={isProcessingMove}
+          >
+            Return to Start
+          </button>
+        )}
       </div>
     </div>
   );

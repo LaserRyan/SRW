@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +22,7 @@ AUTH_SECRET = os.getenv("AUTH_SECRET")
 AUTH_ALGORITHM = "HS256"
 AUTH_TOKEN_DAYS = 7
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+bearer_scheme = HTTPBearer()
 
 password_hasher = PasswordHasher()
 
@@ -658,8 +658,10 @@ def get_user_by_id(user_id: int):
             return cur.fetchone()
 
 
-def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
-    return get_user_id_from_token(token)
+def get_current_user_id(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> int:
+    return get_user_id_from_token(credentials.credentials)
 
 def username_exists(username: str) -> bool:
     return get_user_by_username(username) is not None

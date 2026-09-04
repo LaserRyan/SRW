@@ -22,7 +22,7 @@ AUTH_SECRET = os.getenv("AUTH_SECRET")
 AUTH_ALGORITHM = "HS256"
 AUTH_TOKEN_DAYS = 7
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 password_hasher = PasswordHasher()
 
@@ -59,6 +59,7 @@ CURRENT_PLAYER_ID = "local-player"
 @dataclass
 class PlayerState:
     player_id: str
+    user_id: int | None
     deal_index: int
     game_state: dict
     wrong_move_count: int = 0
@@ -517,17 +518,34 @@ def reset_player_deal_tracking(player: PlayerState) -> None:
     player.foundation_to_tableau_count = 0
 
 
-def build_player_state(player_id: str, match_seed: int, deal_index: int = 0) -> PlayerState:
+def build_player_state(
+    player_id: str,
+    match_seed: int,
+    deal_index: int = 0,
+    user_id: int | None = None,
+) -> PlayerState:
     return PlayerState(
         player_id=player_id,
+        user_id=user_id,
         deal_index=deal_index,
-        game_state=build_new_game_state(get_deal_seed(match_seed, deal_index)),
+        game_state=build_new_game_state(
+            get_deal_seed(match_seed, deal_index)
+        ),
     )
 
 
-def build_match_state(match_id: str, player_id: str) -> MatchState:
+def build_match_state(
+    match_id: str,
+    player_id: str,
+    user_id: int | None = None,
+) -> MatchState:
     match_seed = random.randrange(1_000_000_000)
-    player = build_player_state(player_id, match_seed)
+
+    player = build_player_state(
+        player_id=player_id,
+        match_seed=match_seed,
+        user_id=user_id,
+    )
 
     return MatchState(
         match_id=match_id,
@@ -659,8 +677,22 @@ def get_user_by_id(user_id: int):
 
 
 def get_current_user_id(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> int:
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+    return get_user_id_from_token(credentials.credentials)
+
+def get_optional_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> int | None:
+    if credentials is None:
+        return None
+
     return get_user_id_from_token(credentials.credentials)
 
 def username_exists(username: str) -> bool:
@@ -924,6 +956,7 @@ def get_match_status(match_id: str):
         "players": [
             {
                 "playerId": player.player_id,
+                "userId": player.user_id,
                 "dealIndex": player.deal_index,
                 "resetCount": player.reset_count,
                 "moveCount": player.move_count,
@@ -1170,15 +1203,24 @@ def check_player_elimination(
         return {"error": str(e)}
 
 @app.post("/matches")
-def create_match(request: CreateMatchRequest):
+def create_match(
+    request: CreateMatchRequest,
+    user_id: int | None = Depends(get_optional_user_id),
+):
     match_id = str(random.randrange(100000, 1000000))
-    matches[match_id] = build_match_state(match_id, request.playerId)
+
+    matches[match_id] = build_match_state(
+        match_id,
+        request.playerId,
+        user_id=user_id,
+    )
 
     player = matches[match_id].players[request.playerId]
 
     return {
         "matchId": match_id,
         "playerId": player.player_id,
+        "userId": player.user_id,
         "gameState": copy_game_state(player.game_state),
         "dealProgressScore": calculate_deal_progress_score(player),
     }
@@ -1187,11 +1229,16 @@ def create_match(request: CreateMatchRequest):
 
 
 @app.post("/matches/{match_id}/players/{player_id}")
-def add_player_to_match(match_id: str, player_id: str):
+def add_player_to_match(
+    match_id: str,
+    player_id: str,
+    user_id: int | None = Depends(get_optional_user_id),
+):
     if match_id not in matches:
         return {"error": "Match not found"}
 
     match = matches[match_id]
+
     if match.status != "lobby":
         return {"error": "Cannot join match after it has started"}
 
@@ -1202,6 +1249,7 @@ def add_player_to_match(match_id: str, player_id: str):
         player_id=player_id,
         match_seed=match.match_seed,
         deal_index=0,
+        user_id=user_id,
     )
 
     match.players[player_id] = player
@@ -1209,10 +1257,10 @@ def add_player_to_match(match_id: str, player_id: str):
     return {
         "matchId": match_id,
         "playerId": player.player_id,
+        "userId": player.user_id,
         "gameState": copy_game_state(player.game_state),
         "dealProgressScore": calculate_deal_progress_score(player),
     }
-
 
 @app.get("/matches/{match_id}/players/{player_id}/game-state")
 def get_player_game_state(match_id: str, player_id: str):

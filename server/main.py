@@ -567,6 +567,26 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 def ping():
     return {"message": "pong"}
 
+@app.post("/db-create-test-user")
+def db_create_test_user():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (username, password_hash)
+                VALUES (%s, %s)
+                RETURNING user_id, username, created_at
+                """,
+                ("TestUser", "NOT_A_REAL_PASSWORD_HASH"),
+            )
+
+            user = cur.fetchone()
+
+    return {
+        "user_id": user[0],
+        "username": user[1],
+        "created_at": user[2],
+    }
 
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):

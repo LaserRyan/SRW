@@ -591,6 +591,31 @@ def create_player_stats(user_id: int):
 
             return cur.fetchone()
 
+def create_account(username: str, password_hash: str):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (username, password_hash)
+                VALUES (%s, %s)
+                RETURNING user_id, username, created_at
+                """,
+                (username, password_hash),
+            )
+
+            user = cur.fetchone()
+            user_id = user[0]
+
+            cur.execute(
+                """
+                INSERT INTO player_stats (user_id)
+                VALUES (%s)
+                """,
+                (user_id,),
+            )
+
+            return user
+
 
 def get_user_by_username(username: str):
     with psycopg.connect(DATABASE_URL) as conn:

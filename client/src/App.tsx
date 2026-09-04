@@ -295,7 +295,7 @@ const finishCurrentPlayer = async () => {
 
   try {
     await fetch(
-      `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/finish`,
+      `${BASE_URL}/matches/${matchId}/players/${playerId}/finish`,
       {
         method: "POST",
         headers: {
@@ -318,7 +318,7 @@ const loadMatchSummary = async () => {
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/matches/${matchId}/summary`
+      `${BASE_URL}/matches/${matchId}/summary`
     );
 
     const data = await response.json();
@@ -470,7 +470,7 @@ useEffect(() => {
               }
               
               const response = await fetch(
-                `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/tableau-to-tableau`,
+                `${BASE_URL}/matches/${matchId}/players/${playerId}/move/tableau-to-tableau`,
                 {
                   method: "POST",
                   headers: {
@@ -513,7 +513,7 @@ useEffect(() => {
 
           await runLockedMove(async () => {
             const response = await fetch(
-              `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/foundation-to-tableau`,
+              `${BASE_URL}/matches/${matchId}/players/${playerId}/move/foundation-to-tableau`,
               {
                 method: "POST",
                 headers: {
@@ -587,7 +587,7 @@ useEffect(() => {
         setError(null);
 
         const matchResponse = await fetch(
-          `http://127.0.0.1:8000/matches/${matchId}`
+          `${BASE_URL}/matches/${matchId}`
         );
 
         const matchData = await matchResponse.json();
@@ -625,7 +625,7 @@ useEffect(() => {
 
     const checkMatchStatus = async () => {
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}`
+        `${BASE_URL}/matches/${matchId}`
       );
 
       const data = await response.json();
@@ -710,7 +710,7 @@ const loadCurrentPlayerState = async () => {
     setError(null);
 
     const response = await fetch(
-      `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/game-state`
+      `${BASE_URL}/matches/${matchId}/players/${playerId}/game-state`
     );
 
     const data = await response.json();
@@ -760,7 +760,7 @@ const handleNewGame = async () => {
     saveMatchIdentity(data.matchId, data.playerId);
 
     // const startResponse = await fetch(
-    //   `http://127.0.0.1:8000/matches/${data.matchId}/start`,
+    //   `${BASE_URL}/matches/${data.matchId}/start`,
     //   {
     //     method: "POST",
     //   }
@@ -817,7 +817,7 @@ const handleJoinMatch = async () => {
     setCountdownSeconds(null);
 
     const response = await fetch(
-      `http://127.0.0.1:8000/matches/${trimmedMatchId}/players/${newPlayerId}`,
+      `${BASE_URL}/matches/${trimmedMatchId}/players/${newPlayerId}`,
       {
         method: "POST",
       }
@@ -856,7 +856,7 @@ const handleReadyUp = async () => {
     setError(null);
 
     const response = await fetch(
-      `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/ready`,
+      `${BASE_URL}/matches/${matchId}/players/${playerId}/ready`,
       {
         method: "POST",
       }
@@ -889,7 +889,7 @@ const handleResetGame = async () => {
     setError(null);
 
     const response = await fetch(
-      `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/reset`,
+      `${BASE_URL}/matches/${matchId}/players/${playerId}/reset`,
       {
         method: "POST",
       }
@@ -925,7 +925,7 @@ const handleLeaveGame = async () => {
   if (matchId && playerId) {
     try {
       await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/quit`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/quit`,
         {
           method: "POST",
         }
@@ -967,7 +967,7 @@ const handleLeaveGame = async () => {
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/waste-to-tableau`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/move/waste-to-tableau`,
         {
           method: "POST",
           headers: {
@@ -1005,7 +1005,7 @@ const handleLeaveGame = async () => {
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/waste-to-foundation`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/move/waste-to-foundation`,
         {
           method: "POST",
           headers: {
@@ -1042,7 +1042,7 @@ const handleLeaveGame = async () => {
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/tableau-to-foundation`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/move/tableau-to-foundation`,
         {
           method: "POST",
           headers: {
@@ -1081,7 +1081,7 @@ const handleLeaveGame = async () => {
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/tableau-to-tableau`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/move/tableau-to-tableau`,
         {
           method: "POST",
           headers: {
@@ -1151,7 +1151,7 @@ const handleLeaveGame = async () => {
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/move/foundation-to-tableau`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/move/foundation-to-tableau`,
         {
           method: "POST",
           headers: {
@@ -1259,7 +1259,7 @@ const handleLeaveGame = async () => {
       setError(null);
 
       const response = await fetch(
-        `http://127.0.0.1:8000/matches/${matchId}/players/${playerId}/draw`,
+        `${BASE_URL}/matches/${matchId}/players/${playerId}/draw`,
         {
           method: "POST",
         }

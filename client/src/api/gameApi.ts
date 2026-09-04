@@ -22,8 +22,124 @@ export type GameStateResponse = {
   dealProgressScore: number;
 };
 
+
+
 const BASE_URL = import.meta.env.VITE_API_URL;
 console.log("API URL:", BASE_URL);
+
+export type PlayerStats = {
+  games_played: number;
+  wins: number;
+  pb_time: number | null;
+  pb_moves: number | null;
+};
+
+export type AuthResponse = {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  username: string;
+  created_at: string;
+  stats: PlayerStats;
+};
+
+export type CurrentUser = {
+  user_id: number;
+  username: string;
+  created_at: string;
+  stats: PlayerStats;
+};
+
+const AUTH_TOKEN_KEY = "srw_auth_token";
+
+export function saveAuthToken(token: string) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+}
+export async function signup(
+  username: string,
+  password: string,
+): Promise<AuthResponse> {
+  const response = await fetch(`${BASE_URL}/signup`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.detail ?? "Signup failed");
+  }
+
+  const data: AuthResponse = await response.json();
+
+  saveAuthToken(data.access_token);
+
+  return data;
+}
+
+export async function login(
+  username: string,
+  password: string,
+): Promise<AuthResponse> {
+  const response = await fetch(`${BASE_URL}/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      username,
+      password,
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json();
+    throw new Error(data.detail ?? "Login failed");
+  }
+
+  const data: AuthResponse = await response.json();
+
+  saveAuthToken(data.access_token);
+
+  return data;
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error("Not logged in");
+  }
+
+  const response = await fetch(`${BASE_URL}/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthToken();
+    }
+
+    throw new Error("Unable to load current user");
+  }
+
+  return response.json();
+}
 
 export async function fetchGameState(): Promise<GameState> {
   const response = await fetch(`${BASE_URL}/game-state`);

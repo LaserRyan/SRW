@@ -7,11 +7,23 @@ import time
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-from fastapi import FastAPI, HTTPException
+from datetime import datetime, timedelta, timezone
+import jwt
+
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
+
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+AUTH_SECRET = os.getenv("AUTH_SECRET")
+AUTH_ALGORITHM = "HS256"
+AUTH_TOKEN_DAYS = 7
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
 password_hasher = PasswordHasher()
 
 app = FastAPI()
@@ -574,34 +586,6 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 
     return player
 
-# def create_user(username: str, password_hash: str):
-#     with psycopg.connect(DATABASE_URL) as conn:
-#         with conn.cursor() as cur:
-#             cur.execute(
-#                 """
-#                 INSERT INTO users (username, password_hash)
-#                 VALUES (%s, %s)
-#                 RETURNING user_id, username, created_at
-#                 """,
-#                 (username, password_hash),
-#             )
-
-#             return cur.fetchone()
-
-
-# def create_player_stats(user_id: int):
-#     with psycopg.connect(DATABASE_URL) as conn:
-#         with conn.cursor() as cur:
-#             cur.execute(
-#                 """
-#                 INSERT INTO player_stats (user_id)
-#                 VALUES (%s)
-#                 RETURNING user_id, games_played, wins, pb_time, pb_moves
-#                 """,
-#                 (user_id,),
-#             )
-
-#             return cur.fetchone()
 
 def normalize_username(username: str) -> str:
     return username.strip()
@@ -658,6 +642,24 @@ def get_user_by_username(username: str):
             )
 
             return cur.fetchone()
+
+def get_user_by_id(user_id: int):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT user_id, username, created_at
+                FROM users
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+
+            return cur.fetchone()
+
+
+def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
+    return get_user_id_from_token(token)
 
 def username_exists(username: str) -> bool:
     return get_user_by_username(username) is not None
@@ -739,6 +741,53 @@ def verify_password(password: str, password_hash: str) -> bool:
         return password_hasher.verify(password_hash, password)
     except VerifyMismatchError:
         return False
+
+def create_access_token(user_id: int) -> str:
+    if not AUTH_SECRET:
+        raise RuntimeError("AUTH_SECRET is not configured")
+
+    expires_at = datetime.now(timezone.utc) + timedelta(days=AUTH_TOKEN_DAYS)
+
+    payload = {
+        "sub": str(user_id),
+        "exp": expires_at,
+    }
+
+    return jwt.encode(
+        payload,
+        AUTH_SECRET,
+        algorithm=AUTH_ALGORITHM,
+    )
+
+
+def get_user_id_from_token(token: str) -> int:
+    if not AUTH_SECRET:
+        raise RuntimeError("AUTH_SECRET is not configured")
+
+    try:
+        payload = jwt.decode(
+            token,
+            AUTH_SECRET,
+            algorithms=[AUTH_ALGORITHM],
+        )
+
+        user_id = payload.get("sub")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication token",
+            )
+
+        return int(user_id)
+
+    except (jwt.InvalidTokenError, ValueError):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authentication token",
+        )
+
+
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
@@ -770,7 +819,11 @@ def signup(request: SignupRequest):
             detail="Username already exists",
         )
 
+
+    access_token = create_access_token(account["user_id"])
     return {
+        "access_token": access_token,
+        "token_type": "bearer",
         "user_id": account["user_id"],
         "username": account["username"],
         "created_at": account["created_at"],
@@ -801,6 +854,7 @@ def login(request: LoginRequest):
         )
 
     stats = get_player_stats(user_id)
+    access_token = create_access_token(user_id)
 
     return {
         "user_id": user_id,
@@ -812,7 +866,33 @@ def login(request: LoginRequest):
             "pb_time": stats[3],
             "pb_moves": stats[4],
         },
+        "access_token": access_token,
+        "token_type": "bearer",
     }  
+
+@app.get("/me")
+def get_me(user_id: int = Depends(get_current_user_id)):
+    user = get_user_by_id(user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User no longer exists",
+        )
+
+    stats = get_player_stats(user_id)
+
+    return {
+        "user_id": user[0],
+        "username": user[1],
+        "created_at": user[2],
+        "stats": {
+            "games_played": stats[1],
+            "wins": stats[2],
+            "pb_time": stats[3],
+            "pb_moves": stats[4],
+        },
+    }
 
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):

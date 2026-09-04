@@ -588,6 +588,105 @@ def db_create_test_user():
         "created_at": user[2],
     }
 
+@app.post("/db-create-test-stats")
+def db_create_test_stats():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO player_stats (user_id)
+                SELECT user_id
+                FROM users
+                WHERE username = %s
+                RETURNING user_id, games_played, wins, pb_time, pb_moves
+                """,
+                ("TestUser",),
+            )
+
+            stats = cur.fetchone()
+
+    return {
+        "user_id": stats[0],
+        "games_played": stats[1],
+        "wins": stats[2],
+        "pb_time": stats[3],
+        "pb_moves": stats[4],
+    }
+
+@app.post("/db-test-bad-stats-user")
+def db_test_bad_stats_user():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO player_stats (user_id)
+                VALUES (%s)
+                """,
+                (999999999,),
+            )
+
+    return {"status": "unexpected success"}
+
+@app.post("/db-test-bad-wins")
+def db_test_bad_wins():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE player_stats
+                SET games_played = 0,
+                    wins = 1
+                WHERE user_id = (
+                    SELECT user_id
+                    FROM users
+                    WHERE username = %s
+                )
+                """,
+                ("TestUser",),
+            )
+
+    return {"status": "unexpected success"}
+
+@app.post("/db-test-negative-games")
+def db_test_negative_games():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE player_stats
+                SET games_played = -1
+                WHERE user_id = (
+                    SELECT user_id
+                    FROM users
+                    WHERE username = %s
+                )
+                """,
+                ("TestUser",),
+            )
+
+    return {"status": "unexpected success"}
+
+@app.post("/db-test-bad-pb")
+def db_test_bad_pb():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE player_stats
+                SET pb_time = 0
+                WHERE user_id = (
+                    SELECT user_id
+                    FROM users
+                    WHERE username = %s
+                )
+                """,
+                ("TestUser",),
+            )
+
+    return {"status": "unexpected success"}
+
+
+
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):
     if match_id not in matches:

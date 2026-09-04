@@ -7,8 +7,8 @@ import time
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -105,6 +105,10 @@ class FinishPlayerRequest(BaseModel):
 
 class CheckEliminationRequest(BaseModel):
     elapsedTime: float
+
+class SignupRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=30)
+    password: str = Field(min_length=8, max_length=128)
 
 def get_deal_seed(match_seed: int, deal_index: int) -> int:
     return match_seed + deal_index
@@ -595,6 +599,9 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 
 #             return cur.fetchone()
 
+def normalize_username(username: str) -> str:
+    return username.strip()
+
 def create_account(username: str, password_hash: str):
     with psycopg.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
@@ -733,7 +740,38 @@ def ping():
     return {"message": "pong"}
 
 
+@app.post("/signup")
+def signup(request: SignupRequest):
+    username = normalize_username(request.username)
 
+    if len(username) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="Username must be at least 3 characters long",
+        )
+
+    if username_exists(username):
+        raise HTTPException(
+            status_code=409,
+            detail="Username already exists",
+        )
+
+    password_hash = hash_password(request.password)
+
+    try:
+        account = create_account(username, password_hash)
+    except psycopg.errors.UniqueViolation:
+        raise HTTPException(
+            status_code=409,
+            detail="Username already exists",
+        )
+
+    return {
+        "user_id": account["user_id"],
+        "username": account["username"],
+        "created_at": account["created_at"],
+        "stats": account["stats"],
+    }
         
 
 @app.get("/matches/{match_id}")

@@ -4,11 +4,15 @@ import psycopg
 from dataclasses import dataclass, field
 import time
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+password_hasher = PasswordHasher()
 
 app = FastAPI()
 
@@ -562,34 +566,34 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 
     return player
 
-def create_user(username: str, password_hash: str):
-    with psycopg.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO users (username, password_hash)
-                VALUES (%s, %s)
-                RETURNING user_id, username, created_at
-                """,
-                (username, password_hash),
-            )
+# def create_user(username: str, password_hash: str):
+#     with psycopg.connect(DATABASE_URL) as conn:
+#         with conn.cursor() as cur:
+#             cur.execute(
+#                 """
+#                 INSERT INTO users (username, password_hash)
+#                 VALUES (%s, %s)
+#                 RETURNING user_id, username, created_at
+#                 """,
+#                 (username, password_hash),
+#             )
 
-            return cur.fetchone()
+#             return cur.fetchone()
 
 
-def create_player_stats(user_id: int):
-    with psycopg.connect(DATABASE_URL) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO player_stats (user_id)
-                VALUES (%s)
-                RETURNING user_id, games_played, wins, pb_time, pb_moves
-                """,
-                (user_id,),
-            )
+# def create_player_stats(user_id: int):
+#     with psycopg.connect(DATABASE_URL) as conn:
+#         with conn.cursor() as cur:
+#             cur.execute(
+#                 """
+#                 INSERT INTO player_stats (user_id)
+#                 VALUES (%s)
+#                 RETURNING user_id, games_played, wins, pb_time, pb_moves
+#                 """,
+#                 (user_id,),
+#             )
 
-            return cur.fetchone()
+#             return cur.fetchone()
 
 def create_account(username: str, password_hash: str):
     with psycopg.connect(DATABASE_URL) as conn:
@@ -610,11 +614,24 @@ def create_account(username: str, password_hash: str):
                 """
                 INSERT INTO player_stats (user_id)
                 VALUES (%s)
+                RETURNING user_id, games_played, wins, pb_time, pb_moves
                 """,
                 (user_id,),
             )
 
-            return user
+            stats = cur.fetchone()
+
+            return {
+                "user_id": user[0],
+                "username": user[1],
+                "created_at": user[2],
+                "stats": {
+                    "games_played": stats[1],
+                    "wins": stats[2],
+                    "pb_time": stats[3],
+                    "pb_moves": stats[4],
+                },
+            }
 
 
 def get_user_by_username(username: str):
@@ -631,6 +648,8 @@ def get_user_by_username(username: str):
 
             return cur.fetchone()
 
+def username_exists(username: str) -> bool:
+    return get_user_by_username(username) is not None
 
 def get_player_stats(user_id: int):
     with psycopg.connect(DATABASE_URL) as conn:
@@ -700,6 +719,15 @@ def record_completed_game(
             return cur.fetchone()
 
 
+def hash_password(password: str) -> str:
+    return password_hasher.hash(password)
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        return password_hasher.verify(password_hash, password)
+    except VerifyMismatchError:
+        return False
 @app.get("/ping")
 def ping():
     return {"message": "pong"}

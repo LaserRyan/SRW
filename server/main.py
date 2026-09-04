@@ -1,4 +1,5 @@
 import random
+import os
 from dataclasses import dataclass, field
 import time
 
@@ -6,6 +7,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
+DATABASE_URL = os.getenv("DATABASE_URL")
+print("DATABASE_URL configured:", bool(DATABASE_URL))
+#temp
 app = FastAPI()
 
 app.add_middleware(

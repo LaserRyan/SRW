@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import type { GameState, Card } from "./api/gameApi";
+import {
+  login as loginAccount,
+  signup as signupAccount,
+  getCurrentUser,
+  clearAuthToken,
+} from "./api/gameApi";
 import "./App.css";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -94,6 +100,11 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
 function App() {
   const [screen, setScreen] = useState<Screen>("welcome");
   const [displayName, setDisplayName] = useState("Guest");
+
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -699,6 +710,26 @@ useEffect(() => {
     };
   }, [screen]);
 
+  useEffect(() => {
+    const restoreAccount = async () => {
+      try {
+        const account = await getCurrentUser();
+
+        setDisplayName(account.username);
+        setIsLoggedIn(true);
+
+        if (!matchId || !playerId) {
+          setScreen("modeSelect");
+        }
+      } catch {
+        // No saved login, expired token, or invalid token.
+        // Remaining as a guest is fine.
+      }
+    };
+
+    void restoreAccount();
+  }, []);
+
 const loadCurrentPlayerState = async () => {
   if (!matchId || !playerId) {
     setError("Missing match or player id");
@@ -1278,6 +1309,56 @@ const handleLeaveGame = async () => {
     }
   };
 
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const account = await loginAccount(authUsername, authPassword);
+
+      setDisplayName(account.username);
+      setIsLoggedIn(true);
+      setAuthUsername("");
+      setAuthPassword("");
+      setScreen("modeSelect");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const account = await signupAccount(authUsername, authPassword);
+
+      setDisplayName(account.username);
+      setIsLoggedIn(true);
+      setAuthUsername("");
+      setAuthPassword("");
+      setScreen("modeSelect");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearAuthToken();
+
+    setIsLoggedIn(false);
+    setDisplayName("Guest");
+    setAuthUsername("");
+    setAuthPassword("");
+    setError(null);
+    setScreen("welcome");
+  };
+
+
   const finalTimeMs =
     matchStats.overallElapsedMs + matchStats.accumulatedPenaltyMs;
 
@@ -1310,6 +1391,8 @@ if (screen === "welcome") {
        <button
           className="new-game-button"
           onClick={() => {
+            clearAuthToken();
+            setIsLoggedIn(false);
             setDisplayName("Guest");
             setScreen("modeSelect");
           }}
@@ -1320,26 +1403,47 @@ if (screen === "welcome") {
     </div>
   );
 }
+
 if (screen === "login") {
   return (
     <div className="app start-screen">
       <div className="start-screen-content">
         <h1 className="title">Log In</h1>
 
-        <p className="start-screen-subtitle">
-          Account login will be added later. For now, continue as a guest.
-        </p>
+        <input
+          type="text"
+          placeholder="Username"
+          value={authUsername}
+          onChange={(event) => setAuthUsername(event.target.value)}
+          disabled={loading}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={authPassword}
+          onChange={(event) => setAuthPassword(event.target.value)}
+          disabled={loading}
+        />
+
+        {error && <p className="error">{error}</p>}
 
         <button
           className="new-game-button"
-          onClick={() => setScreen("modeSelect")}
+          onClick={handleLogin}
+          disabled={loading}
         >
-          Continue as Guest
+          {loading ? "Logging In..." : "Log In"}
         </button>
 
         <button
           className="leave-game-button"
-          onClick={() => setScreen("welcome")}
+          onClick={() => {
+            setError(null);
+            setAuthPassword("");
+            setScreen("welcome");
+          }}
+          disabled={loading}
         >
           Back
         </button>
@@ -1355,19 +1459,43 @@ if (screen === "signup") {
         <h1 className="title">Sign Up</h1>
 
         <p className="start-screen-subtitle">
-          Account creation will be added later. For now, continue as a guest.
+          Username: 3–30 characters. Password: at least 8 characters.
         </p>
+
+        <input
+          type="text"
+          placeholder="Username"
+          value={authUsername}
+          onChange={(event) => setAuthUsername(event.target.value)}
+          disabled={loading}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={authPassword}
+          onChange={(event) => setAuthPassword(event.target.value)}
+          disabled={loading}
+        />
+
+        {error && <p className="error">{error}</p>}
 
         <button
           className="new-game-button"
-          onClick={() => setScreen("modeSelect")}
+          onClick={handleSignup}
+          disabled={loading}
         >
-          Continue as Guest
+          {loading ? "Creating Account..." : "Create Account"}
         </button>
 
         <button
           className="leave-game-button"
-          onClick={() => setScreen("welcome")}
+          onClick={() => {
+            setError(null);
+            setAuthPassword("");
+            setScreen("welcome");
+          }}
+          disabled={loading}
         >
           Back
         </button>
@@ -1399,6 +1527,15 @@ if (screen === "modeSelect") {
         >
           Multiplayer
         </button>
+
+        {isLoggedIn && (
+          <button
+            className="leave-game-button"
+            onClick={handleLogout}
+          >
+            Log Out
+          </button>
+        )}
 
         <button
           className="leave-game-button"

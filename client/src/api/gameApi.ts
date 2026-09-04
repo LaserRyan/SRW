@@ -24,7 +24,8 @@ export type GameStateResponse = {
 
 
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL =
+  import.meta.env.VITE_API_URL ?? "https://srw.onrender.com";
 console.log("API URL:", BASE_URL);
 
 export type PlayerStats = {

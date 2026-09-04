@@ -1,5 +1,6 @@
 import random
 import os
+import psycopg
 from dataclasses import dataclass, field
 import time
 
@@ -565,6 +566,15 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
+#test
+@app.get("/db-test")
+def db_test():
+    with psycopg.connect(DATABASE_URL) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1;")
+            result = cursor.fetchone()
+
+    return {"database": "connected", "result": result[0]}
 
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):

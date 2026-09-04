@@ -566,75 +566,7 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
-#test
-@app.get("/db-test")
-def db_test():
-    with psycopg.connect(DATABASE_URL) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1;")
-            result = cursor.fetchone()
 
-    return {"database": "connected", "result": result[0]}
-
-@app.post("/db-init")
-def db_init():
-    with psycopg.connect(DATABASE_URL) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    user_id BIGSERIAL PRIMARY KEY,
-                    username VARCHAR(30) UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS player_stats (
-                    user_id BIGINT PRIMARY KEY,
-                    games_played INTEGER NOT NULL DEFAULT 0,
-                    wins INTEGER NOT NULL DEFAULT 0,
-                    pb_time DOUBLE PRECISION,
-                    pb_moves INTEGER,
-
-                    CONSTRAINT fk_player_stats_user
-                        FOREIGN KEY (user_id)
-                        REFERENCES users(user_id),
-
-                    CONSTRAINT chk_games_played_nonnegative
-                        CHECK (games_played >= 0),
-
-                    CONSTRAINT chk_wins_nonnegative
-                        CHECK (wins >= 0),
-
-                    CONSTRAINT chk_wins_not_greater_than_games
-                        CHECK (wins <= games_played),
-
-                    CONSTRAINT chk_pb_time_positive
-                        CHECK (pb_time IS NULL OR pb_time > 0),
-
-                    CONSTRAINT chk_pb_moves_positive
-                        CHECK (pb_moves IS NULL OR pb_moves > 0)
-                );
-            """)
-
-        connection.commit()
-
-    return {"database": "initialized"}
-
-@app.get("/db-tables")
-def db_tables():
-    with psycopg.connect(DATABASE_URL) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                ORDER BY table_name;
-            """)
-            tables = [row[0] for row in cursor.fetchall()]
-
-    return {"tables": tables}
 
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):

@@ -110,6 +110,10 @@ class SignupRequest(BaseModel):
     username: str = Field(min_length=3, max_length=30)
     password: str = Field(min_length=8, max_length=128)
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 def get_deal_seed(match_seed: int, deal_index: int) -> int:
     return match_seed + deal_index
 
@@ -772,7 +776,43 @@ def signup(request: SignupRequest):
         "created_at": account["created_at"],
         "stats": account["stats"],
     }
-        
+
+@app.post("/login")
+def login(request: LoginRequest):
+    username = normalize_username(request.username)
+
+    user = get_user_by_username(username)
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password",
+        )
+
+    user_id = user[0]
+    stored_username = user[1]
+    password_hash = user[2]
+    created_at = user[3]
+
+    if not verify_password(request.password, password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password",
+        )
+
+    stats = get_player_stats(user_id)
+
+    return {
+        "user_id": user_id,
+        "username": stored_username,
+        "created_at": created_at,
+        "stats": {
+            "games_played": stats[1],
+            "wins": stats[2],
+            "pb_time": stats[3],
+            "pb_moves": stats[4],
+        },
+    }  
 
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):

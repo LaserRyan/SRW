@@ -562,12 +562,126 @@ def get_active_player(match_id: str, player_id: str) -> PlayerState:
 
     return player
 
+def create_user(username: str, password_hash: str):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO users (username, password_hash)
+                VALUES (%s, %s)
+                RETURNING user_id, username, created_at
+                """,
+                (username, password_hash),
+            )
+
+            return cur.fetchone()
+
+
+def create_player_stats(user_id: int):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO player_stats (user_id)
+                VALUES (%s)
+                RETURNING user_id, games_played, wins, pb_time, pb_moves
+                """,
+                (user_id,),
+            )
+
+            return cur.fetchone()
+
+
+def get_user_by_username(username: str):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT user_id, username, password_hash, created_at
+                FROM users
+                WHERE username = %s
+                """,
+                (username,),
+            )
+
+            return cur.fetchone()
+
+
+def get_player_stats(user_id: int):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT user_id, games_played, wins, pb_time, pb_moves
+                FROM player_stats
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+
+            return cur.fetchone()
+
+
+def increment_games_played(user_id: int):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE player_stats
+                SET games_played = games_played + 1
+                WHERE user_id = %s
+                RETURNING games_played
+                """,
+                (user_id,),
+            )
+
+            return cur.fetchone()
+
+
+def record_completed_game(
+    user_id: int,
+    won: bool,
+    final_time: float,
+    move_count: int,
+):
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE player_stats
+                SET
+                    wins = wins + %s,
+                    pb_time = CASE
+                        WHEN pb_time IS NULL OR %s < pb_time THEN %s
+                        ELSE pb_time
+                    END,
+                    pb_moves = CASE
+                        WHEN pb_moves IS NULL OR %s < pb_moves THEN %s
+                        ELSE pb_moves
+                    END
+                WHERE user_id = %s
+                RETURNING user_id, games_played, wins, pb_time, pb_moves
+                """,
+                (
+                    1 if won else 0,
+                    final_time,
+                    final_time,
+                    move_count,
+                    move_count,
+                    user_id,
+                ),
+            )
+
+            return cur.fetchone()
+
 
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
 
 
+
+        
 
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):

@@ -622,6 +622,20 @@ def db_init():
 
     return {"database": "initialized"}
 
+@app.get("/db-tables")
+def db_tables():
+    with psycopg.connect(DATABASE_URL) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                ORDER BY table_name;
+            """)
+            tables = [row[0] for row in cursor.fetchall()]
+
+    return {"tables": tables}
+
 @app.get("/matches/{match_id}")
 def get_match_status(match_id: str):
     if match_id not in matches:

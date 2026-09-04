@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { GameState, Card } from "./api/gameApi";
 import "./App.css";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 type SelectedTableauMove = {
   tableauIndex: number;
@@ -740,7 +741,7 @@ const handleNewGame = async () => {
     setLobbyPlayerCount(1);
     setLobbyReadyCount(0);
 
-    const response = await fetch("http://127.0.0.1:8000/matches", {
+    const response = await fetch(`${BASE_URL}/matches`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

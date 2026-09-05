@@ -4,10 +4,12 @@ import {
   login as loginAccount,
   signup as signupAccount,
   getCurrentUser,
+  getAuthToken,
   clearAuthToken,
 } from "./api/gameApi";
 import "./App.css";
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL =
+  import.meta.env.VITE_API_URL ?? "https://srw.onrender.com";
 
 type SelectedTableauMove = {
   tableauIndex: number;
@@ -772,10 +774,13 @@ const handleNewGame = async () => {
     setLobbyPlayerCount(1);
     setLobbyReadyCount(0);
 
+    const token = getAuthToken();
+
     const response = await fetch(`${BASE_URL}/matches`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         playerId: createTemporaryPlayerId(),
@@ -790,18 +795,7 @@ const handleNewGame = async () => {
 
     saveMatchIdentity(data.matchId, data.playerId);
 
-    // const startResponse = await fetch(
-    //   `${BASE_URL}/matches/${data.matchId}/start`,
-    //   {
-    //     method: "POST",
-    //   }
-    // );
-
-    // const startData = await startResponse.json();
-
-    // if (startData.error) {
-    //   throw new Error(startData.error);
-    // }
+  
 
     const now = Date.now();
 
@@ -847,10 +841,15 @@ const handleJoinMatch = async () => {
     setIsReady(false);
     setCountdownSeconds(null);
 
+    const token = getAuthToken();
+
     const response = await fetch(
       `${BASE_URL}/matches/${trimmedMatchId}/players/${newPlayerId}`,
       {
         method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       }
     );
 
